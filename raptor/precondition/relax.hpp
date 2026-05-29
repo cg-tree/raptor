@@ -33,6 +33,10 @@ void calc_row_sum(MatrixType* A, double* x, int row_start, int row_end,
         double* row_sum, int row, float S = 1.0);
 
 template <typename MatrixType>
+int calc_row_sum_count_sparse(MatrixType* A, double* x, int row_start, int row_end, 
+        double* row_sum, int row, float S = 1.0);
+
+template <typename MatrixType>
 void update_row(MatrixType* A, double* x, double* b, double* tmp, double* diag, 
         double* row_sum, double omega, double* tmp_rsum, float S = 1.0);
 

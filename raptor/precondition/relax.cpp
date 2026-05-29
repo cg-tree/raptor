@@ -83,6 +83,45 @@ void sor_copy(Vector& tmp, Vector& x)
 
 
 template<>
+int calc_row_sum_count_sparse<CSRMatrix>(CSRMatrix* A, double* x, int row_start, int row_end, double* row_sum, int row, float S)
+{
+    /*differs from calc_row_sum in the following ways
+     * 1. doesn't scale by S
+     * 2. returns number of nonzero entries removed*/
+    int entries_removed=0;
+    if (S == 1)
+    {
+        for (int j = row_start; j < row_end; j++)
+        {
+            int col = A->idx2[j];
+            if (col != row)
+                *row_sum += A->vals[j] * x[col];
+        }
+    }
+    else
+    {
+        float p = 1.0 / S;
+        for (int j = row_start; j < row_end; j++)
+        {
+            int col = A->idx2[j];
+            if (col != row)
+            {
+                double r = (double)rand() / RAND_MAX;
+                if (r < p)
+                    *row_sum += (A->vals[j]) * x[col];
+                else
+                    entries_removed++;
+            }
+        }
+    }
+    //if (entries_removed)
+    //    printf("number of nz entries removed: %d\n",entries_removed);
+    return entries_removed;
+}
+
+
+
+template<>
 void calc_row_sum<CSRMatrix>(CSRMatrix* A, double* x, int row_start, int row_end, double* row_sum, int row, float S)
 {
     if (S == 1)
@@ -134,6 +173,7 @@ void update_row(MatrixType* A, double* x, double* b, double* tmp, double* diag, 
 template<>
 void update_row<CSRMatrix>(CSRMatrix* A, double* x, double* b, double* tmp, double* diag, double* row_sum, double omega, double* tmp_rsum, float S)
 {
+    S = 1.0;
     if (fabs(*diag) > zero_tol)
         *x = ((1.0 - omega) * *tmp) + (omega*((*b - *row_sum) / (*diag * S)));
 }
@@ -179,6 +219,36 @@ void relax_row<CSRMatrix>(CSRMatrix* A, Vector& b, Vector& x, Vector& tmp, doubl
     update_row(A, &(x[row]), &(b[row]), &(tmp[row]), &diag, &row_sum, omega, NULL, S);
 }
 
+template <typename MatrixType>
+int relax_row_count_sparse(MatrixType* A, Vector& b, Vector& x, Vector& tmp, double omega, 
+        int row, double* rsum, double* tmp_rsum, double* D_inv, float S);
+
+template <>
+int relax_row_count_sparse<CSRMatrix>(CSRMatrix* A, Vector& b, Vector& x, Vector& tmp, double omega, int row,
+    double* rsum, double* tmp_rsum, double* D_inv, float S)
+{
+    double diag = 0;
+    double row_sum = 0;
+    int row_start = A->idx1[row];
+    int row_end = A->idx1[row+1];
+
+    if (row_start < row_end && A->idx2[row_start] == row)
+        diag = A->vals[row_start++];
+    else return 0;
+
+    /*uses modified row sum so that we only scale the rowsum when necessary(1 or more values removed) */
+    int entries_removed = calc_row_sum_count_sparse(A, tmp.data(), row_start, row_end, &row_sum, row, S);
+    if (entries_removed)
+    {
+        row_sum *= S;
+        update_row(A, &(x[row]), &(b[row]), &(tmp[row]), &diag, &row_sum, omega, NULL, S);
+    }
+    else
+        update_row(A, &(x[row]), &(b[row]), &(tmp[row]), &diag, &row_sum, omega, NULL, 1);
+    
+    return entries_removed;
+}
+
 template<>
 void relax_row<BSRMatrix>(BSRMatrix* A, Vector& b, Vector& x, Vector& tmp, double omega, int row, 
         double* rsum, double* tmp_rsum, double* D_inv, float S)
@@ -198,6 +268,13 @@ void relax_row<BSRMatrix>(BSRMatrix* A, Vector& b, Vector& x, Vector& tmp, doubl
     update_row(A, &(x[row*n]), &(b[row*n]), &(tmp[row*n]), &(D_inv[row*(A->b_size)]),  
             rsum, omega, tmp_rsum);
 }
+template<>
+int relax_row_count_sparse<BSRMatrix>(BSRMatrix* A, Vector& b, Vector& x, Vector& tmp, double omega, int row, 
+        double* rsum, double* tmp_rsum, double* D_inv, float S)
+{
+    relax_row(A,b,x,tmp,omega,row,rsum,tmp_rsum, D_inv,S);
+    return 0;
+}
 
 template <typename MatrixType>
 void relax_incr(MatrixType* A, Vector& b, Vector& x, Vector& tmp,
@@ -208,6 +285,19 @@ void relax_incr(MatrixType* A, Vector& b, Vector& x, Vector& tmp,
     {
         relax_row(A, b, x, tmp, omega, row, rsum, tmp_rsum, D_inv, S);
     }
+}
+
+template <typename MatrixType>
+void relax_incr_count_sparse(MatrixType* A, Vector& b, Vector& x, Vector& tmp,
+        double omega, double* D_inv = NULL, double* rsum = NULL, double* tmp_rsum = NULL,
+        int* points = NULL, int points_len = 0, float S = 1.0)
+{
+    int entries_removed = 0;
+    for (int row = 0; row < A->n_rows; row++)
+    {
+        entries_removed += relax_row_count_sparse(A, b, x, tmp, omega, row, rsum, tmp_rsum, D_inv, S);
+    }
+    if (entries_removed) printf("total nonzero entries removed: %d\n",entries_removed);
 }
 
 template <typename MatrixType>
@@ -246,8 +336,8 @@ void relax(R relax_sweep, C copy, M* A, Vector& b, Vector& x, Vector& tmp,
     double* rsum = new double[A->b_rows];
     double* tmp_rsum = new double[A->b_rows];
 
-    float seed = time(NULL);
-
+    time_t seed = time(NULL);
+    printf("seed %d",seed);
     for (int iter = 0; iter < num_sweeps; iter++)
     {
         srand(seed);
@@ -274,7 +364,7 @@ template <typename MatrixType>
 void sor(MatrixType* A, Vector& b, Vector& x, Vector& tmp, int num_sweeps,
         double omega, double* D_inv, int* points, int points_len, float S)
 {
-    auto F = relax_incr<MatrixType>;
+    auto F = relax_incr_count_sparse<MatrixType>;
     if (points_len > 0 && points != NULL)
         F = relax_points<MatrixType>;
 

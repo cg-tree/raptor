@@ -17,6 +17,35 @@ double wtime()
     return (double) clock() / (double) CLOCKS_PER_SEC;
 }
 
+void alternating_sparsified_jacobi(int n_outer,
+    int n_inner,
+    CSRMatrix* A,
+    Vector x_jac,
+    Vector b,
+    Vector r,
+    Vector tmp,
+    float S){
+    
+    double r_norm, b_norm;
+    b_norm = b.norm(2);
+    printf("Alternating Sparsified Jacobi, S 1.0,%f repeating:\n",S);
+    A->residual(x_jac, b, r);
+    r_norm = r.norm(2);
+    printf("Initial: %e\n", r_norm/b_norm);
+    for (int i = 0; i < n_outer; i++)
+    {
+        if( i % 2 == 0){ 
+            sor(A, b, x_jac, tmp, n_inner, 2.0/3, NULL, NULL, 0, 1.0);
+        }else{
+            sor(A, b, x_jac, tmp, n_inner, 2.0/3, NULL, NULL, 0, S);
+        }
+        A->residual(x_jac, b, r);
+        r_norm = r.norm(2);
+        printf("%d: %e\n", i, r_norm/b_norm); 
+    }
+
+}
+
 int main(int argc, char *argv[])
 {
     int dim=0;
@@ -83,6 +112,11 @@ int main(int argc, char *argv[])
         }
         A = readMatrix(file);
     }
+    else if (system == 4)
+    {
+        //path to .mtx file
+        A = read_mm(argv[2]);
+    }
 
     x = Vector(A->n_rows);
     x_jac = Vector(A->n_rows);
@@ -93,8 +127,8 @@ int main(int argc, char *argv[])
     b.set_rand_values();
     x.set_const_value(0.0);
 
-    int n_outer = 10;
-    int n_inner = 2;
+    int n_outer = 5;
+    int n_inner = 9;
     double r_norm, b_norm;
     b_norm = b.norm(2);
 
@@ -112,7 +146,20 @@ int main(int argc, char *argv[])
         printf("%d: %e\n", i, r_norm/b_norm); 
     }
 
-    printf("Sparsified Jacobi, S 1.005:\n");
+    for (int i = 0; i < A->n_rows; i++)
+        x_jac[i] = x[i];
+    alternating_sparsified_jacobi(n_outer,n_inner,A,x_jac,b,r,tmp,1.000001);
+
+    //printf("Alternating Sparsified Jacobi, S 1.0,1.001 repeating:\n");
+    for (int i = 0; i < A->n_rows; i++)
+        x_jac[i] = x[i];
+    alternating_sparsified_jacobi(n_outer,n_inner,A,x_jac,b,r,tmp,1.00001);
+
+    for (int i = 0; i < A->n_rows; i++)
+        x_jac[i] = x[i];
+    alternating_sparsified_jacobi(n_outer,n_inner,A,x_jac,b,r,tmp,1.0001);
+
+    printf("Sparsified Jacobi, S 1.00005:\n");
     for (int i = 0; i < A->n_rows; i++)
         x_jac[i] = x[i];
     A->residual(x_jac, b, r);
@@ -120,12 +167,68 @@ int main(int argc, char *argv[])
     printf("Initial: %e\n", r_norm/b_norm);
     for (int i = 0; i < n_outer; i++)
     {
-        sor(A, b, x_jac, tmp, n_inner, 2.0/3, NULL, NULL, 0, 1.005);
+        sor(A, b, x_jac, tmp, n_inner, 2.0/3, NULL, NULL, 0, 1.00005);
+        A->residual(x_jac, b, r);
+        r_norm = r.norm(2);
+        printf("%d: %e\n", i, r_norm/b_norm); 
+    }
+    
+    printf("Sparsified Jacobi, S 1.0001:\n");
+    for (int i = 0; i < A->n_rows; i++)
+        x_jac[i] = x[i];
+    A->residual(x_jac, b, r);
+    r_norm = r.norm(2);
+    printf("Initial: %e\n", r_norm/b_norm);
+    for (int i = 0; i < n_outer; i++)
+    {
+        sor(A, b, x_jac, tmp, n_inner, 2.0/3, NULL, NULL, 0, 1.0001);
         A->residual(x_jac, b, r);
         r_norm = r.norm(2);
         printf("%d: %e\n", i, r_norm/b_norm); 
     }
 
+    printf("Sparsified Jacobi, S 1.0002:\n");
+    for (int i = 0; i < A->n_rows; i++)
+        x_jac[i] = x[i];
+    A->residual(x_jac, b, r);
+    r_norm = r.norm(2);
+    printf("Initial: %e\n", r_norm/b_norm);
+    for (int i = 0; i < n_outer; i++)
+    {
+        sor(A, b, x_jac, tmp, n_inner, 2.0/3, NULL, NULL, 0, 1.0002);
+        A->residual(x_jac, b, r);
+        r_norm = r.norm(2);
+        printf("%d: %e\n", i, r_norm/b_norm); 
+    }
+
+    printf("Sparsified Jacobi, S 1.0005:\n");
+    for (int i = 0; i < A->n_rows; i++)
+        x_jac[i] = x[i];
+    A->residual(x_jac, b, r);
+    r_norm = r.norm(2);
+    printf("Initial: %e\n", r_norm/b_norm);
+    for (int i = 0; i < n_outer; i++)
+    {
+        sor(A, b, x_jac, tmp, n_inner, 2.0/3, NULL, NULL, 0, 1.0005);
+        A->residual(x_jac, b, r);
+        r_norm = r.norm(2);
+        printf("%d: %e\n", i, r_norm/b_norm); 
+    }
+
+    printf("Sparsified Jacobi, S 1.001:\n");
+    for (int i = 0; i < A->n_rows; i++)
+        x_jac[i] = x[i];
+    A->residual(x_jac, b, r);
+    r_norm = r.norm(2);
+    printf("Initial: %e\n", r_norm/b_norm);
+    for (int i = 0; i < n_outer; i++)
+    {
+        sor(A, b, x_jac, tmp, n_inner, 2.0/3, NULL, NULL, 0, 1.001);
+        A->residual(x_jac, b, r);
+        r_norm = r.norm(2);
+        printf("%d: %e\n", i, r_norm/b_norm); 
+    }
+    
     printf("Sparsified Jacobi, S 1.01:\n");
     for (int i = 0; i < A->n_rows; i++)
         x_jac[i] = x[i];
@@ -135,6 +238,20 @@ int main(int argc, char *argv[])
     for (int i = 0; i < n_outer; i++)
     {
         sor(A, b, x_jac, tmp, n_inner, 2.0/3, NULL, NULL, 0, 1.01);
+        A->residual(x_jac, b, r);
+        r_norm = r.norm(2);
+        printf("%d: %e\n", i, r_norm/b_norm); 
+    }
+
+    printf("Sparsified Jacobi, S 1.02:\n");
+    for (int i = 0; i < A->n_rows; i++)
+        x_jac[i] = x[i];
+    A->residual(x_jac, b, r);
+    r_norm = r.norm(2);
+    printf("Initial: %e\n", r_norm/b_norm);
+    for (int i = 0; i < n_outer; i++)
+    {
+        sor(A, b, x_jac, tmp, n_inner, 2.0/3, NULL, NULL, 0, 1.02);
         A->residual(x_jac, b, r);
         r_norm = r.norm(2);
         printf("%d: %e\n", i, r_norm/b_norm); 
@@ -154,50 +271,8 @@ int main(int argc, char *argv[])
         printf("%d: %e\n", i, r_norm/b_norm); 
     }
 
-    printf("Sparsified Jacobi, S 1.1:\n");
-    for (int i = 0; i < A->n_rows; i++)
-        x_jac[i] = x[i];
-    A->residual(x_jac, b, r);
-    r_norm = r.norm(2);
-    printf("Initial: %e\n", r_norm/b_norm);
-    for (int i = 0; i < n_outer; i++)
-    {
-        sor(A, b, x_jac, tmp, n_inner, 2.0/3, NULL, NULL, 0, 1.1);
-        A->residual(x_jac, b, r);
-        r_norm = r.norm(2);
-        printf("%d: %e\n", i, r_norm/b_norm); 
-    }
-
-    printf("Sparsified Jacobi, S 1.5:\n");
-    for (int i = 0; i < A->n_rows; i++)
-        x_jac[i] = x[i];
-    A->residual(x_jac, b, r);
-    r_norm = r.norm(2);
-    printf("Initial: %e\n", r_norm/b_norm);
-    for (int i = 0; i < n_outer; i++)
-    {
-        sor(A, b, x_jac, tmp, n_inner, 2.0/3, NULL, NULL, 0, 1.5);
-        A->residual(x_jac, b, r);
-        r_norm = r.norm(2);
-        printf("%d: %e\n", i, r_norm/b_norm); 
-    }
-
-    printf("Sparsified Jacobi, S 2:\n");
-    for (int i = 0; i < A->n_rows; i++)
-        x_jac[i] = x[i];
-    A->residual(x_jac, b, r);
-    r_norm = r.norm(2);
-    printf("Initial: %e\n", r_norm/b_norm);
-    for (int i = 0; i < n_outer; i++)
-    {
-        sor(A, b, x_jac, tmp, n_inner, 2.0/3, NULL, NULL, 0, 2);
-        A->residual(x_jac, b, r);
-        r_norm = r.norm(2);
-        printf("%d: %e\n", i, r_norm/b_norm); 
-    }
-
     printf("Sparsified Jacobi, Dynamic:\n");
-    float S = 1.5;
+    float S = 1.05;
     for (int i = 0; i < A->n_rows; i++)
         x_jac[i] = x[i];
     A->residual(x_jac, b, r);
