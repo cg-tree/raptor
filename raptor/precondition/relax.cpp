@@ -79,6 +79,9 @@ void jacobi_copy(Vector& tmp, Vector& x)
 }
 void sor_copy(Vector& tmp, Vector& x)
 {
+    /* tried the following, but it didn't improve convergence
+     * jacobi_copy(tmp, x);//this wasn't implemented
+     * */
 }
 
 
